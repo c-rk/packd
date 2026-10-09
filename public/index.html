@@ -9,14 +9,14 @@
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root{--paper:#efe8d6;--ink:#1c1a17;--rule:#1c1a17;--red:#a3271b}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#d9d0b8;color:var(--ink);font:18px/1.5 "Old Standard TT",Georgia,serif}
 .paper{max-width:900px;margin:0 auto;background:var(--paper);min-height:100vh;padding:18px 18px 40px;background-image:radial-gradient(rgba(60,40,10,.07) 1px,transparent 1.2px);background-size:5px 5px;box-shadow:0 0 40px rgba(0,0,0,.18)}
 .meta{display:flex;justify-content:space-between;gap:10px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;border-bottom:3px double var(--rule);padding-bottom:8px}
-.mast{font-family:"Playfair Display",serif;font-weight:900;font-size:clamp(4rem,23vw,9.5rem);line-height:.9;text-align:center;margin:14px 0 22px;letter-spacing:-.04em}
+.mast{margin:10px auto 6px;max-width:620px}.mast svg{display:block;width:100%;height:auto;overflow:visible}.word{font-family:"Caveat",cursive;font-weight:700;font-size:200px;fill:#2a2724}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}#sk{opacity:1}#pencil{transition:opacity .3s}
 .tag{text-align:center;font-style:italic;border-top:1px solid var(--rule);border-bottom:3px double var(--rule);padding:6px 0;margin-bottom:22px}
 h1.hl{font-family:"Playfair Display",serif;font-weight:900;font-size:clamp(2rem,8vw,3.6rem);line-height:1.02;margin:0 0 6px;letter-spacing:-.02em;text-align:center}
 .by{text-align:center;font-style:italic;font-size:.9rem;margin-bottom:22px}
@@ -44,7 +44,30 @@ h1.hl{font-family:"Playfair Display",serif;font-weight:900;font-size:clamp(2rem,
 <body>
 <div class="paper">
   <div class="meta"><span id="d"></span><span>Vol. 1 · Free of charge</span><span>tentkotta.org</span></div>
-  <div class="mast">packd</div>
+  <div class="mast">
+    <h1 class="sr">packd</h1>
+    <svg id="logo" viewBox="0 0 600 230" aria-hidden="true">
+      <defs>
+        <filter id="pen" x="0" y="0" width="600" height="230" filterUnits="userSpaceOnUse">
+          <feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="3" result="w"/>
+          <feDisplacementMap in="SourceGraphic" in2="w" scale="2" result="d"/>
+          <feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="8" result="n"/>
+          <feColorMatrix in="n" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.5 1.6" result="g"/>
+          <feComposite in="d" in2="g" operator="in"/>
+        </filter>
+      </defs>
+      <text x="300" y="165" text-anchor="middle" class="word" filter="url(#pen)">packd</text>
+      <path id="sk" d="M30 128C170 104 390 134 574 100C420 142 210 134 46 168C250 150 420 160 566 146" fill="none" stroke="#2a2724" stroke-width="4.5" stroke-linecap="round" filter="url(#pen)"/>
+      <g id="pencil" transform="translate(30 128) rotate(32)">
+        <path d="M0 0L-7 -22L7 -22Z" fill="#e9c99c"/>
+        <path d="M0 0L-2.4 -7.5L2.4 -7.5Z" fill="#2a2724"/>
+        <rect x="-7" y="-122" width="14" height="100" fill="#f1b72e"/>
+        <rect x="-2" y="-122" width="4" height="100" fill="#d99a14"/>
+        <rect x="-7.5" y="-134" width="15" height="12" fill="#b9bcc2"/>
+        <rect x="-7" y="-148" width="14" height="14" rx="3" fill="#e98a96"/>
+      </g>
+    </svg>
+  </div>
   <div class="tag">The group packing list that fills itself in</div>
 
   <h1 class="hl">Nobody Forgets the Charger, Reports Local Group</h1>
@@ -78,6 +101,34 @@ h1.hl{font-family:"Playfair Display",serif;font-weight:900;font-size:clamp(2rem,
 
   <div class="ad"><span class="stamp">Packed</span> &nbsp; Built for trips, camps, moves and weddings</div>
 </div>
+<script>
+(function () {
+  var sk = document.getElementById('sk'), pen = document.getElementById('pencil');
+  var len = sk.getTotalLength();
+  sk.style.strokeDasharray = len;
+  function frame(p) {
+    sk.style.strokeDashoffset = len * (1 - p);
+    var pt = sk.getPointAtLength(len * p);
+    pen.setAttribute('transform', 'translate(' + pt.x + ' ' + (pt.y + Math.sin(p * 90)) + ') rotate(' + (32 + Math.sin(p * 50) * 3) + ')');
+  }
+  if (matchMedia('(prefers-reduced-motion:reduce)').matches) { frame(1); pen.style.display = 'none'; return; }
+  var DRAW = 2800, HOLD = 2200, ERASE = 800, t0 = null;
+  var ease = function (t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; };
+  function loop(ts) {
+    if (t0 === null) t0 = ts;
+    var t = ts - t0;
+    if (t < 600) { sk.style.opacity = 1; pen.style.opacity = 1; frame(0); }
+    else if (t < 600 + DRAW) frame(ease((t - 600) / DRAW));
+    else if (t < 600 + DRAW + HOLD) { frame(1); pen.style.opacity = 0; }
+    else if (t < 600 + DRAW + HOLD + ERASE) sk.style.opacity = 1 - (t - 600 - DRAW - HOLD) / ERASE;
+    else { t0 = ts; }
+    requestAnimationFrame(loop);
+  }
+  frame(0);
+  var go = function () { requestAnimationFrame(loop); };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); else go();
+})();
+</script>
 <script>
 (function () {
   var d = new Date();

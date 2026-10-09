@@ -21,6 +21,7 @@
     for (const c of D.c) (claimsBy[c[1]] = claimsBy[c[1]] || []).push(c);
     lastFetch = Date.now();
     accent(cfg.a);
+    P.paper(cfg);
     document.title = cfg.title + ' · packd';
     remember(slug, cfg.title, !!KEY);
     return true;
@@ -29,12 +30,29 @@
   const signedMe = () => !!L.sid && D.s.some((s) => s[0] === L.sid);
   const match = (it) => !it.w || Object.keys(it.w).every((q) => it.w[q].includes(L.ans[q]));
 
-  function items() {
-    const out = cfg.items.filter(match);
-    for (const x of D.x) out.push({ id: x.id, t: x.t, c: '_x', q: 1, n: x.d, by: x.n, x: 1 });
-    for (const m of L.my) out.push({ id: m.id, t: m.t, c: '_x', q: 1, n: 0, by: 'you', local: 1 });
+  function tree() {
+    const roots = [];
+    const stack = [];
+    for (const it of cfg.items) {
+      const d = it.d || 0;
+      const parent = d ? stack[d - 1] : null;
+      const ok = (parent ? parent.ok : true) && match(it);
+      const node = { it, kids: [], ok, cfgKid: false };
+      stack.length = d;
+      stack[d] = node;
+      if (parent) { parent.cfgKid = true; if (ok) parent.kids.push(node); }
+      else if (ok) roots.push(node);
+    }
+    const prune = (ns) => ns.filter((n) => { n.kids = prune(n.kids); return !(n.cfgKid && !n.kids.length); });
+    const out = prune(roots);
+    const extra = [];
+    for (const x of D.x) extra.push({ it: { id: x.id, t: x.t, n: x.d, q: 1, by: x.n, x: 1 }, kids: [] });
+    for (const m of L.my) extra.push({ it: { id: m.id, t: m.t, n: 0, q: 1, by: 'you', local: 1 }, kids: [] });
+    if (extra.length) out.push({ it: { id: '_x', t: 'Added' }, kids: extra });
     return out;
   }
+
+  const leavesOf = (n) => (n.kids.length ? n.kids.flatMap(leavesOf) : [n]);
 
   function state(it) {
     if (!it.n) return 'own';
@@ -43,7 +61,8 @@
     return cl.length >= it.n ? 'full' : 'open';
   }
 
-  const needed = () => items().filter((i) => ['own', 'mine'].includes(state(i)));
+  const isNeeded = (n) => ['own', 'mine'].includes(state(n.it));
+  const needed = () => tree().flatMap(leavesOf).filter(isNeeded).map((n) => n.it);
 
   async function call(method, path, body, headers) {
     try { return await api(method, `/l/${slug}${path}`, body, headers || hdr()); }
@@ -175,6 +194,7 @@
         await api('PUT', '/l/' + slug, { cfg: c }, { 'x-key': KEY });
         D.cfg = cfg = c;
         accent(c.a);
+        P.paper(c);
         remember(slug, c.title, true);
         toast('Saved');
         front();
@@ -223,36 +243,39 @@
   function checklist() {
     view = 'list';
     if (!L.name) return join();
-    const all = items();
-    const groups = [];
-    const general = all.filter((i) => !i.c);
-    const named = cfg.cats.length > 0;
-    if (general.length) groups.push({ key: '', name: named ? 'General' : '', list: general });
-    for (const c of cfg.cats) {
-      const l = all.filter((i) => i.c === c.id);
-      if (l.length) groups.push({ key: c.id, name: c.n, list: l });
-    }
-    const xs = all.filter((i) => i.c === '_x');
-    if (xs.length) groups.push({ key: '_x', name: 'Added', list: xs });
-
+    const roots = tree();
+    const recs = [];
     const fill = h('i');
     const count = h('b');
     const signBtn = h('button', { class: 'btn pri block' });
-    const catCounts = [];
 
-    function update() {
-      const list = needed();
-      const done = list.filter((i) => L.ticks[i.id]).length;
+    function sync(step) {
+      let i = 0;
+      for (const r of recs) {
+        if (!r.leaf) continue;
+        const d = !!L.ticks[r.node.it.id];
+        if (d === r.done) continue;
+        r.done = d;
+        const delay = d && step ? i++ * step + 'ms' : '';
+        r.strike.style.transitionDelay = delay;
+        r.ck.style.transitionDelay = delay;
+        r.el.classList.toggle('done', d);
+      }
+      for (const r of recs) {
+        if (r.leaf) continue;
+        const lv = leavesOf(r.node).filter(isNeeded);
+        const done = lv.filter((n) => L.ticks[n.it.id]).length;
+        r.cnt.textContent = lv.length ? `${done}/${lv.length}` : '';
+        r.el.classList.toggle('done', lv.length > 0 && done === lv.length);
+      }
+      const list = roots.flatMap(leavesOf).filter(isNeeded);
+      const done = list.filter((n) => L.ticks[n.it.id]).length;
       fill.style.width = (list.length ? done / list.length * 100 : 0) + '%';
       count.textContent = `${done}/${list.length}`;
       const left = list.length - done;
       const me = signedMe();
       signBtn.disabled = !me && left > 0;
       signBtn.textContent = me ? 'Signed off. Tap to undo' : left > 0 ? `${left} left to pack` : `Sign off as ${L.name}`;
-      for (const c of catCounts) {
-        const l = c.list.filter((i) => ['own', 'mine'].includes(state(i)));
-        c.el.textContent = l.length ? `${l.filter((i) => L.ticks[i.id]).length}/${l.length}` : '';
-      }
     }
 
     signBtn.onclick = async () => {
@@ -262,7 +285,7 @@
         L.sid = null;
         persist();
         toast('Sign off removed');
-        return update();
+        return sync();
       }
       signBtn.disabled = true;
       try {
@@ -273,16 +296,18 @@
         toast('Signed off. Have a great trip!');
         front();
       } catch (e) {
-        update();
+        sync();
         toast(e.status === 409 && e.data.error === 'taken' ? 'That name already signed off on another device. Add an initial.' : e.message);
       }
     };
 
-    function row(it) {
+    function leaf(node) {
+      const it = node.it;
       const s = state(it);
       const cl = claimsBy[it.id] || [];
       const el = h('div', { class: 'row' + (s === 'full' ? ' cov' : '') });
-      const chk = h('span', { class: 'chk' }, '✓');
+      const bx = P.box();
+      const st = h('i', { class: 'strike' });
       let sub = null;
       if (s === 'open') sub = `Group needs ${it.n}. ${cl.length} claimed`;
       else if (s === 'mine') {
@@ -292,14 +317,15 @@
         sub = h('span', null, 'Covered by ', cl.map((c, i) => [i ? ', ' : '', KEY ? h('button', { class: 'link', style: 'font-size:inherit;padding:0', onclick: () => unclaim(c[0], it) }, c[2] + ' ✕') : c[2]]));
       } else if (it.by) sub = `Added by ${it.by}`;
 
-      if (s === 'own' || s === 'mine') {
-        if (L.ticks[it.id]) el.classList.add('done');
+      const rec = { leaf: true, node, el, strike: st, ck: bx.querySelector('.ck'), done: false };
+      const tickable = s === 'own' || s === 'mine';
+      if (tickable && L.ticks[it.id]) { rec.done = true; el.classList.add('done'); }
+      if (tickable) {
         el.addEventListener('click', (e) => {
           if (e.target.closest('button')) return;
           if (L.ticks[it.id]) delete L.ticks[it.id]; else L.ticks[it.id] = 1;
           persist();
-          el.classList.toggle('done');
-          update();
+          sync();
         });
       }
       const side = [];
@@ -307,41 +333,59 @@
       if (s === 'mine') side.push(h('button', { class: 'x', title: 'Unclaim', onclick: () => unclaim(L.claims[it.id], it) }, '✕'));
       if (it.local) side.push(h('button', { class: 'x', title: 'Remove', onclick: () => { L.my = L.my.filter((m) => m.id !== it.id); persist(); checklist(); } }, '✕'));
       if (it.x && (L.xmine[it.id] || KEY)) side.push(h('button', { class: 'x', title: 'Remove', onclick: () => removeExtra(it) }, '✕'));
+      if (s === 'open') bx.style.opacity = '.4';
       el.append(
-        s === 'open' ? h('span', { class: 'chk', style: 'border-style:dashed' }) : chk,
-        h('div', { class: 't' }, it.t, it.q > 1 ? h('span', { class: 'q' }, '×' + it.q) : null, sub ? h('span', { class: 's' }, sub) : null),
+        bx,
+        h('div', { class: 't' }, h('span', { class: 'w' }, it.t, st), it.q > 1 ? h('span', { class: 'q' }, '×' + it.q) : null, sub ? h('span', { class: 's' }, sub) : null),
         ...side,
       );
+      recs.push(rec);
       return el;
     }
 
-    const cats = groups.map((g) => {
-      const cEl = h('span');
-      catCounts.push({ el: cEl, list: g.list });
-      const wrap = h('div', { class: 'cat' + (collapsed.has(g.key) ? ' shut' : '') },
-        g.name ? h('button', { class: 'hd', onclick: () => {
-          wrap.classList.toggle('shut');
-          wrap.classList.contains('shut') ? collapsed.add(g.key) : collapsed.delete(g.key);
-          ls.set('packd:c:' + slug, [...collapsed]);
-        } }, g.name, cEl) : null,
-        h('div', { class: 'rows' }, g.list.map(row)),
-      );
+    function group(node) {
+      const it = node.it;
+      const bx = P.box();
+      const cnt = h('span', { class: 'cnt' });
+      const tickable = leavesOf(node).some(isNeeded);
+      const el = h('div', { class: 'row par' + (tickable ? '' : ' plain') });
+      const wrap = h('div', { class: 'grp' + (collapsed.has(it.id) ? ' shut' : '') });
+      const chev = h('button', { class: 'chev', 'aria-label': 'Fold', onclick: () => {
+        wrap.classList.toggle('shut');
+        wrap.classList.contains('shut') ? collapsed.add(it.id) : collapsed.delete(it.id);
+        ls.set('packd:c:' + slug, [...collapsed]);
+      } }, '▾');
+      el.append(bx, h('div', { class: 't' }, h('span', { class: 'w' }, it.t, h('i', { class: 'strike' }))), cnt, chev);
+      if (tickable) {
+        el.addEventListener('click', (e) => {
+          if (e.target.closest('button')) return;
+          const lv = leavesOf(node).filter(isNeeded);
+          const all = lv.every((n) => L.ticks[n.it.id]);
+          for (const n of lv) { if (all) delete L.ticks[n.it.id]; else L.ticks[n.it.id] = 1; }
+          persist();
+          sync(all ? 0 : 140);
+        });
+      } else bx.style.visibility = 'hidden';
+      recs.push({ leaf: false, node, el, cnt });
+      wrap.append(el, h('div', { class: 'kids' }, node.kids.map(renderNode)));
       return wrap;
-    });
+    }
 
-    P.fill(root, 
+    const renderNode = (n) => (n.kids.length ? group(n) : leaf(n));
+
+    P.fill(root,
       h('div', { class: 'fade' },
         h('div', { class: 'top' }, backBtn(front), h('div', { class: 'bar' }, fill), count),
         h('div', { class: 'eyebrow' }, cfg.title),
         h('h1', null, `Hi ${L.name.split(' ')[0]}`),
         h('button', { class: 'link', style: 'padding-left:0', onclick: join }, 'Not you, or change answers'),
-        all.length ? cats : h('p', { class: 'mut' }, 'Nothing on your list yet.'),
+        roots.length ? h('div', { style: 'margin-top:14px' }, roots.map(renderNode)) : h('p', { class: 'mut' }, 'Nothing on your list yet.'),
         h('button', { class: 'btn block', style: 'margin-top:26px', onclick: addSheet }, '+ Add something'),
         footer(),
       ),
       h('div', { class: 'sbar' }, h('div', null, signBtn)),
     );
-    update();
+    sync();
     window.scrollTo(0, 0);
   }
 

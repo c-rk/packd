@@ -39,7 +39,9 @@ function cleanCfg(c) {
     note: str(c.note, 300),
     date: /^\d{4}-\d{2}-\d{2}$/.test(c.date) ? c.date : '',
     a: /^#[0-9a-f]{6}$/i.test(c.a) ? c.a.toLowerCase() : '#16a34a',
-    qs: [], cats: [], items: [], roster: [],
+    ps: ['ruled', 'dots', 'grid', 'plain'].includes(c.ps) ? c.ps : 'ruled',
+    pc: /^#[0-9a-f]{6}$/i.test(c.pc) ? c.pc.toLowerCase() : '',
+    qs: [], items: [], roster: [],
   };
   const ids = (set) => (v) => {
     let id = typeof v === 'string' && /^[a-z0-9]{1,12}$/.test(v) && !set.has(v) ? v : null;
@@ -47,24 +49,20 @@ function cleanCfg(c) {
     set.add(id);
     return id;
   };
-  const qid = ids(new Set()), oid = ids(new Set()), cid = ids(new Set()), iid = ids(new Set());
+  const qid = ids(new Set()), oid = ids(new Set()), iid = ids(new Set());
   for (const q of (Array.isArray(c.qs) ? c.qs : []).slice(0, 5)) {
     const text = str(q?.q, 60);
     const o = (Array.isArray(q?.o) ? q.o : []).slice(0, 8)
       .map((x) => ({ id: oid(x?.id), n: str(x?.n, 30) })).filter((x) => x.n);
     if (text && o.length >= 2) out.qs.push({ id: qid(q.id), q: text, o });
   }
-  for (const k of (Array.isArray(c.cats) ? c.cats : []).slice(0, 20)) {
-    const n = str(k?.n, 30);
-    if (n) out.cats.push({ id: cid(k.id), n });
-  }
-  const catSet = new Set(out.cats.map((k) => k.id));
+  let prev = -1;
   for (const it of (Array.isArray(c.items) ? c.items : []).slice(0, 300)) {
     const t = str(it?.t, 80);
     if (!t) continue;
     const item = {
       id: iid(it.id), t,
-      c: catSet.has(it.c) ? it.c : '',
+      d: Math.min(int(it.d, 0, 2, 0), prev + 1),
       q: int(it.q, 1, 99, 1),
       n: int(it.n, 0, 9, 0),
     };
@@ -76,8 +74,12 @@ function cleanCfg(c) {
       }
       if (Object.keys(w).length) item.w = w;
     }
+    prev = item.d;
     out.items.push(item);
   }
+  out.items.forEach((it, i) => {
+    if (out.items[i + 1] && out.items[i + 1].d > it.d) { it.n = 0; it.q = 1; }
+  });
   const seen = new Set();
   for (const r of (Array.isArray(c.roster) ? c.roster : []).slice(0, 200)) {
     const n = str(r, 40), k = norm(n);

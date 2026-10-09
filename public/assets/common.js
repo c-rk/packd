@@ -78,6 +78,22 @@ window.P = (() => {
     s.setProperty('--on', onColor(hex));
   }
 
+  function paper(c) {
+    const r = document.documentElement, s = r.style;
+    r.dataset.paper = c.ps || 'ruled';
+    const keys = ['--bg', '--fg', '--mut', '--card', '--line', '--rule', '--strike'];
+    if (!c.pc) { keys.forEach((k) => s.removeProperty(k)); return; }
+    const n = parseInt(c.pc.slice(1), 16);
+    const dark = (0.299 * (n >> 16) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255 < 0.45;
+    s.setProperty('--bg', c.pc);
+    s.setProperty('--fg', dark ? '#efe9d8' : '#2b2a27');
+    s.setProperty('--mut', dark ? '#a8a28f' : '#7d7765');
+    s.setProperty('--card', `color-mix(in srgb,${c.pc} ${dark ? 88 : 55}%,white)`);
+    s.setProperty('--line', dark ? '#ffffff30' : '#00000026');
+    s.setProperty('--rule', dark ? '#ffffff26' : '#5b8bd666');
+    s.setProperty('--strike', dark ? 'url(/assets/strike-d.svg)' : 'url(/assets/strike.svg)');
+  }
+
   function daysTo(d) {
     if (!d) return null;
     const [y, m, dd] = d.split('-').map(Number);
@@ -101,5 +117,12 @@ window.P = (() => {
 
   const fill = (el, ...kids) => el.replaceChildren(...kids.flat(9).filter((c) => c != null && c !== false));
 
-  return { fill, $, h, ls, api, norm, rid, toast, copy, share, accent, daysTo, ago, remember };
+  const BOX = '<svg class="bx" viewBox="0 0 32 32" aria-hidden="true"><path class="bd" d="M5 6Q16 3 27 5 29 16 27 27 16 29 5 27 3 16 5 6Z"/><path class="ck" d="M8 17 14 24 28 5"/></svg>';
+  function box() {
+    const t = document.createElement('template');
+    t.innerHTML = BOX;
+    return t.content.firstChild;
+  }
+
+  return { paper, box, fill, $, h, ls, api, norm, rid, toast, copy, share, accent, daysTo, ago, remember };
 })();
