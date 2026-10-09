@@ -1,0 +1,8 @@
+name = "packd"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "packd"
+database_id = "REPLACE_WITH_YOUR_D1_ID"

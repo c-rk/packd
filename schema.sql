@@ -1,0 +1,14 @@
+CREATE TABLE IF NOT EXISTS lists (
+  slug    TEXT PRIMARY KEY,
+  akey    TEXT NOT NULL,
+  data    TEXT NOT NULL,
+  created INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS entries (
+  slug TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  id   TEXT NOT NULL,
+  data TEXT NOT NULL,
+  PRIMARY KEY (slug, kind, id)
+) WITHOUT ROWID;

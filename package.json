@@ -1,0 +1,10 @@
+{
+  "name": "packd",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev public --port 8788",
+    "db:local": "wrangler d1 execute packd --local --file=schema.sql",
+    "db:remote": "wrangler d1 execute packd --remote --file=schema.sql"
+  },
+  "devDependencies": { "wrangler": "^4" }
+}
