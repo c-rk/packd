@@ -1,21 +1,11 @@
 # packd
 
-Group packing lists. Plain static frontend, Cloudflare Pages Functions, one D1 database.
+Shared packing checklists for groups. One person makes the list, everyone else opens a short link, ticks things off as they pack, and signs off when they are done.
 
-## Deploy
-
-1. Create the database: `npx wrangler d1 create packd`, then paste the id into `wrangler.toml`.
-2. Create the tables: `npm run db:remote`.
-3. Cloudflare Pages: connect this repo, build command empty, output directory `public`.
-4. Pages settings, Functions, D1 binding: variable `DB` to the `packd` database (already set if `wrangler.toml` is used).
-5. Custom domain: `packd.tentkotta.org`.
-
-## Local
-
-`npm install`, `npm run db:local`, `npm run dev`, open http://localhost:8788.
-
-## Notes
-
-- List pages are `/<slug>`. Admin link is the list link plus `#k=<key>`; only a hash of the key is stored.
-- Ticking items is stored on the device only. D1 is written for list create or edit, sign offs, claims and member added items.
-- Reads are edge cached for 10 seconds per list.
+- Questions on the list decide which items each person sees
+- Items can be nested, and ticking a group ticks everything inside it
+- Shared items that only one or two people need to bring
+- Anyone can add items, and the creator can edit or remove anything
+- Handwritten notebook look with a choice of paper style and colour
+- Optional passcode to lock a list
+- No accounts
