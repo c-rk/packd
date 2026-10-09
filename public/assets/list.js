@@ -331,6 +331,8 @@
       const side = [];
       if (s === 'open') side.push(h('button', { class: 'btn sm pri', onclick: () => claim(it) }, "I'll bring"));
       if (s === 'mine') side.push(h('button', { class: 'x', title: 'Unclaim', onclick: () => unclaim(L.claims[it.id], it) }, '✕'));
+      const mineItem = it.local || (it.x && (L.xmine[it.id] || KEY));
+      if (mineItem) side.push(h('button', { class: 'x', title: 'Edit', onclick: () => addSheet(it) }, '✎'));
       if (it.local) side.push(h('button', { class: 'x', title: 'Remove', onclick: () => { L.my = L.my.filter((m) => m.id !== it.id); persist(); checklist(); } }, '✕'));
       if (it.x && (L.xmine[it.id] || KEY)) side.push(h('button', { class: 'x', title: 'Remove', onclick: () => removeExtra(it) }, '✕'));
       if (s === 'open') bx.style.opacity = '.4';
@@ -380,7 +382,7 @@
         h('h1', null, `Hi ${L.name.split(' ')[0]}`),
         h('button', { class: 'link', style: 'padding-left:0', onclick: join }, 'Not you, or change answers'),
         roots.length ? h('div', { style: 'margin-top:14px' }, roots.map(renderNode)) : h('p', { class: 'mut' }, 'Nothing on your list yet.'),
-        h('button', { class: 'btn block', style: 'margin-top:26px', onclick: addSheet }, '+ Add something'),
+        h('button', { class: 'btn block', style: 'margin-top:26px', onclick: () => addSheet() }, '+ Add something'),
         footer(),
       ),
       h('div', { class: 'sbar' }, h('div', null, signBtn)),
@@ -420,9 +422,9 @@
     checklist();
   }
 
-  function addSheet() {
-    let mode = 'me';
-    const input = h('input', { type: 'text', placeholder: 'What else should be packed?', maxLength: 80 });
+  function addSheet(edit) {
+    let mode = edit ? (edit.local ? 'me' : String(edit.n)) : 'me';
+    const input = h('input', { type: 'text', placeholder: 'What else should be packed?', maxLength: 80, value: edit ? edit.t : '' });
     const modes = [
       ['me', 'Just me', 'Only on your own list.'],
       ['0', 'Everyone', 'Added to every list.'],
@@ -436,23 +438,49 @@
       note.textContent = modes.find((m) => m[0] === mode)[2];
     };
     const close = () => sheet.remove();
-    const add = h('button', { class: 'btn pri block', style: 'margin-top:18px', onclick: async () => {
+
+    async function createServer(t) {
+      const d = +mode;
+      const r = await api('POST', `/l/${slug}/e/x`, { t, d, name: L.name, tok: L.tok });
+      D.x.push({ id: r.id, t, n: L.name, d, ts: Date.now() });
+      L.xmine[r.id] = 1;
+    }
+
+    async function save() {
       const t = input.value.trim();
       if (!t) return input.focus();
-      add.disabled = true;
-      if (mode === 'me') { L.my.push({ id: 'm' + rid(5), t }); persist(); close(); return checklist(); }
+      save_.disabled = true;
       try {
-        const d = +mode;
-        const r = await api('POST', `/l/${slug}/e/x`, { t, d, name: L.name, tok: L.tok });
-        D.x.push({ id: r.id, t, n: L.name, d, ts: Date.now() });
-        L.xmine[r.id] = 1;
+        if (!edit) {
+          if (mode === 'me') L.my.push({ id: 'm' + rid(5), t });
+          else await createServer(t);
+        } else if (edit.local && mode === 'me') {
+          const m = L.my.find((x) => x.id === edit.id);
+          if (m) m.t = t;
+        } else if (edit.x && mode !== 'me') {
+          const d = +mode;
+          await api('PUT', `/l/${slug}/e/x/${encodeURIComponent(edit.id)}`, { t, d }, hdr());
+          const x = D.x.find((v) => v.id === edit.id);
+          if (x) { x.t = t; x.d = d; }
+        } else if (edit.local) {
+          await createServer(t);
+          L.my = L.my.filter((m) => m.id !== edit.id);
+        } else {
+          await api('DELETE', `/l/${slug}/e/x/${encodeURIComponent(edit.id)}`, null, hdr());
+          D.x = D.x.filter((x) => x.id !== edit.id);
+          D.c = D.c.filter((c) => c[1] !== edit.id);
+          delete claimsBy[edit.id];
+          L.my.push({ id: 'm' + rid(5), t });
+        }
         persist();
         close();
         checklist();
-      } catch (e) { toast(e.message); add.disabled = false; }
-    } }, 'Add');
+      } catch (e) { toast(e.message); save_.disabled = false; }
+    }
+
+    const save_ = h('button', { class: 'btn pri block', style: 'margin-top:18px', onclick: save }, edit ? 'Save' : 'Add');
     const sheet = h('div', { class: 'sheet', onclick: (e) => e.target === sheet && close() },
-      h('div', null, h('h2', null, 'Add something'), input, h('label', { class: 'f' }, 'Who needs it'), chips, note, add));
+      h('div', null, h('h2', null, edit ? 'Edit item' : 'Add something'), input, h('label', { class: 'f' }, 'Who needs it'), chips, note, save_));
     document.body.append(sheet);
     paint();
     input.focus();

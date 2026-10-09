@@ -112,6 +112,7 @@ export async function onRequest(ctx) {
       if (p[2] === 'e' && ['s', 'c', 'x'].includes(p[3])) {
         if (p.length === 4 && m === 'POST') return await add(ctx, slug, p[3]);
         if (p.length === 5 && m === 'DELETE') return await del(ctx, slug, p[3], p[4]);
+        if (p.length === 5 && m === 'PUT' && p[3] === 'x') return await upd(ctx, slug, p[4]);
       }
     }
     return json({ error: 'not found' }, 404);
@@ -268,6 +269,22 @@ async function del(ctx, slug, kind, id) {
   if (kind === 'x')
     await env.DB.prepare("DELETE FROM entries WHERE slug=? AND kind='c' AND id>=? AND id<?")
       .bind(slug, id + '~', id + '\x7f').run();
+  bust(ctx, slug);
+  return json({ ok: 1 });
+}
+
+async function upd(ctx, slug, id) {
+  const { request, env } = ctx;
+  const b = await body(request, 4000);
+  const t = str(b.t, 80);
+  if (!t) return json({ error: 'Item needed' }, 400);
+  const tok = request.headers.get('x-tok') || '';
+  const key = request.headers.get('x-key') || '';
+  const r = await env.DB.prepare(
+    `UPDATE entries SET data=json_set(data,'$.t',?4,'$.d',?5) WHERE slug=?1 AND kind='x' AND id=?2
+     AND (json_extract(data,'$.k')=?3 OR EXISTS(SELECT 1 FROM lists WHERE slug=?1 AND akey=?6))`
+  ).bind(slug, id, tok.length >= 8 ? tok : '-', t, int(b.d, 0, 9, 0), key ? await sha(key) : '-').run();
+  if (!r.meta.changes) return json({ error: 'Not allowed' }, 403);
   bust(ctx, slug);
   return json({ ok: 1 });
 }

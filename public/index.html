@@ -36,7 +36,7 @@ h1.hl{font-family:"Playfair Display",serif;font-weight:900;font-size:clamp(2rem,
 .mine{list-style:none;padding:0;margin:0;text-align:left}
 .mine a{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px dotted var(--ink);color:inherit;text-decoration:none;font-weight:700}
 .mine small{font-weight:400;font-style:italic}
-.ad{border-top:1px solid var(--rule);margin-top:26px;padding-top:12px;font-size:.8rem;text-align:center;text-transform:uppercase;letter-spacing:.1em}
+.quote{border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin:26px 0 0;padding:16px 8px;text-align:center;font-style:italic;font-size:1.05rem}.quote p{margin:0 0 8px}.quote small{font-style:normal;font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}.ad{border-top:1px solid var(--rule);margin-top:26px;padding-top:12px;font-size:.8rem;text-align:center;text-transform:uppercase;letter-spacing:.1em}
 .stamp{color:var(--red);border:2px solid var(--red);display:inline-block;padding:2px 10px;transform:rotate(-3deg);font-weight:700;letter-spacing:.1em;font-size:.8rem}
 @media(max-width:640px){.cols{column-count:1;text-align:left}.meta span:nth-child(2){display:none}}
 </style>
@@ -70,24 +70,31 @@ h1.hl{font-family:"Playfair Display",serif;font-weight:900;font-size:clamp(2rem,
   </div>
   <div class="tag">The group packing list that fills itself in</div>
 
-  <h1 class="hl">Nobody Forgets the Charger, Reports Local Group</h1>
-  <div class="by">Our correspondent on the 6am bus</div>
+  <h1 class="hl">Local Man Packs Seven Shirts, Forgets Toothbrush</h1>
+  <div class="by">By someone who has done exactly this</div>
 
   <div class="cols">
-    <p>One person makes the list. Everyone else opens a short link and sees only what applies to them. Guys, girls, trekkers, swimmers: answer a couple of questions and the list adjusts itself.</p>
-    <p>Tick things off as they go in the bag. When everything is packed, sign off with your name. The front page shows who has signed, who is still packing, and how many days remain.</p>
-    <h3>Only one speaker needed</h3>
-    <p>Some things the whole group needs just once. Mark an item as "one person" and a single volunteer claims it. Everyone else sees it is covered.</p>
-    <h3>Anyone can add</h3>
-    <p>Forgot something? Add it for yourself or for the entire group. The organiser can remove anything, and can undo a sign off.</p>
+    <p>Every group trip goes the same way. Somebody posts a list in the chat. The chat moves on. Three days later nobody can find the list, and four people have packed a speaker.</p>
+    <p>packd fixes that. One person makes the list, everyone else opens a link and ticks things off as they drop them in the bag. There is a satisfying scribble when you do.</p>
+    <h3>Different people, different lists</h3>
+    <p>Say who you are and it hides the stuff that is not yours. Nobody needs to see "hair dryer" unless they want to.</p>
+    <h3>Please do not all bring the speaker</h3>
+    <p>Mark something as "one person" and the first brave volunteer gets it. Everyone else sees it is handled and goes back to worrying about their own bag.</p>
+    <h3>Sign here</h3>
+    <p>Packed everything? Put your name on it. The front page shows who is ready and who is still sitting on the bed deciding between two jackets.</p>
     <h3>No accounts</h3>
-    <p>No passwords, no apps. The organiser gets a private admin link. Everyone else just taps the shared one.</p>
+    <p>No passwords, no app, no sign up. If you can open a link, you can pack.</p>
+  </div>
+
+  <div class="quote">
+    <p>I packed my socks, I packed my shoes,<br>I packed a jacket, just in case.<br>I packed three books I will not read,<br>and left the charger in its place.</p>
+    <small>The Packing Song, sung badly at every airport</small>
   </div>
 
   <div class="box">
-    <h2>Start a list</h2>
-    <p style="margin:0 0 14px">Takes a minute. Paste your items, pick a colour, share the link.</p>
-    <a class="go" href="/new">Make a list &rarr;</a>
+    <h2>Make a list</h2>
+    <p style="margin:0 0 14px">Takes about a minute. Paste your items, pick a colour, send the link to the group chat. Then enjoy being the organised one.</p>
+    <a class="go" href="/new">Start a list &rarr;</a>
     <div class="join">
       <div><span>packd.tentkotta.org/</span><input id="slug" placeholder="goa-trip" autocapitalize="none" autocomplete="off" spellcheck="false"></div>
       <button id="open">Open</button>
@@ -99,7 +106,7 @@ h1.hl{font-family:"Playfair Display",serif;font-weight:900;font-size:clamp(2rem,
     <ul class="mine" id="ml"></ul>
   </div>
 
-  <div class="ad"><span class="stamp">Packed</span> &nbsp; Built for trips, camps, moves and weddings</div>
+  <div class="ad"><span class="stamp">Packed</span> &nbsp; Works for trips, camps, moving house and weddings. Not for remembering anniversaries.</div>
 </div>
 <script>
 (function () {

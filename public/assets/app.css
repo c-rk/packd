@@ -38,7 +38,7 @@ label.f{display:block;font:700 1.3rem var(--hand);margin:18px 0 4px}
 .names li:last-child{border:0}
 .names .tick{width:28px;height:28px;flex:none;color:var(--a);font:700 1.9rem/1 var(--hand);text-align:center}
 .names .n{font-weight:700;flex:1;min-width:0;overflow-wrap:anywhere;font-size:1.3rem}
-.x{appearance:none;border:0;background:none;color:var(--mut);font-size:1.1rem;cursor:pointer;padding:6px 10px;border-radius:8px}
+.x{appearance:none;border:0;background:none;color:var(--fg);opacity:.7;font-size:1.1rem;cursor:pointer;padding:6px 10px;border-radius:8px}
 .x:hover{color:#dc2626}
 .top{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:12px 18px 12px 34px;margin:-28px -18px 18px -34px;display:flex;align-items:center;gap:14px}
 .top .bar{flex:1}
@@ -74,8 +74,14 @@ label.f{display:block;font:700 1.3rem var(--hand);margin:18px 0 4px}
 @keyframes u{from{transform:translateY(40px);opacity:0}}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 20px;border-radius:var(--wob);font-weight:700;font-size:.95rem;z-index:30;animation:u .2s;max-width:90vw;text-align:center}
 .ed .item{border-bottom:1.5px dashed var(--line);padding:8px 0}
-.ed .item .r1{display:flex;gap:2px;align-items:center}
-.ed .item .det{padding:10px 0 4px;display:grid;gap:10px}
+.ed .item .r1{display:flex;gap:4px;align-items:center}
+.ed .item .r1 .x{flex:none;width:38px;height:38px;padding:0;border:2px solid var(--fg);border-radius:10px;background:var(--card);color:var(--fg);opacity:1;font-size:1.1rem;font-weight:700;line-height:1}
+.ed .item .r1 .x:active{background:var(--a);color:var(--on)}
+.ed .item .det{margin:10px 0 4px 16px;padding:12px;border:2px dashed color-mix(in srgb,var(--fg) 40%,transparent);border-radius:14px;background:var(--card);display:grid;gap:10px}
+.ed .det input,.ed .det select{min-height:38px;padding:5px 12px;font-size:.9rem;border-width:1.5px}
+.ed .det .btn.sm{min-height:36px;padding:0 10px;font-size:.82rem;border-width:1.5px}
+.ed .det .chip{padding:2px 12px;font-size:.85rem;border-width:1.5px}
+.ed .det .mv{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ed .sw{display:flex;gap:10px;flex-wrap:wrap}
 .ed .sw button{width:38px;height:38px;border-radius:50%;border:3px solid transparent;cursor:pointer;outline:2px solid transparent}
 .ed .sw button.on{outline-color:var(--fg)}
