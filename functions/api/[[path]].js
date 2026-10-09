@@ -9,7 +9,7 @@ const TTL = 10;
 const json = (o, status = 200) =>
   new Response(JSON.stringify(o), {
     status,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex, nofollow' },
   });
 
 const str = (v, max) =>
@@ -100,7 +100,7 @@ async function body(request, max = 70000) {
   try { return JSON.parse(raw || '{}'); } catch { return {}; }
 }
 
-const cacheKey = (request, slug) => new Request(new URL('/__c/' + slug, request.url).toString());
+const cacheKey = (request, slug) => new Request(new URL('/__c2/' + slug, request.url).toString());
 
 export async function onRequest(ctx) {
   const { request, params } = ctx;
@@ -129,10 +129,15 @@ export async function onRequest(ctx) {
   }
 }
 
+const PW = /^.{3,40}$/;
+const lockId = (slug, pw) => sha(slug + ':' + pw);
+
 async function create({ request, env }) {
   const b = await body(request);
   const cfg = cleanCfg(b.cfg);
   if (!cfg) return json({ error: 'Title needed' }, 400);
+  const pw = typeof b.pw === 'string' ? b.pw.trim() : '';
+  if (pw && !PW.test(pw)) return json({ error: 'Passcode must be 3 to 40 characters' }, 400);
   const custom = str(b.slug, 40).toLowerCase().replace(/\s+/g, '-');
   if (custom && (custom.length < 2 || !SLUG.test(custom) || RESERVED.has(custom)))
     return json({ error: 'Bad link name (letters, numbers, dashes)' }, 400);
@@ -143,10 +148,45 @@ async function create({ request, env }) {
     const slug = custom || [0, 1, 2].map(() => WORDS[crypto.getRandomValues(new Uint32Array(1))[0] % WORDS.length]).join('-');
     const r = await env.DB.prepare('INSERT OR IGNORE INTO lists(slug,akey,data,created) VALUES(?,?,?,?)')
       .bind(slug, akey, data, Date.now()).run();
-    if (r.meta.changes > 0) return json({ slug, key });
+    if (r.meta.changes > 0) {
+      if (pw) await env.DB.prepare("INSERT OR REPLACE INTO entries(slug,kind,id,data) VALUES(?,'p',?,'{}')").bind(slug, await lockId(slug, pw)).run();
+      return json({ slug, key });
+    }
     if (custom) return json({ error: 'That link name is taken' }, 409);
   }
   return json({ error: 'Try again' }, 503);
+}
+
+async function load(env, slug) {
+  const [l, e] = await env.DB.batch([
+    env.DB.prepare('SELECT data,akey FROM lists WHERE slug=?').bind(slug),
+    env.DB.prepare('SELECT kind,id,data FROM entries WHERE slug=?').bind(slug),
+  ]);
+  const row = l.results[0];
+  if (!row) return null;
+  const out = { cfg: JSON.parse(row.data), s: [], c: [], x: [] };
+  const ss = [];
+  let ph = '';
+  for (const r of e.results) {
+    if (r.kind === 'p') { ph = r.id; continue; }
+    const d = JSON.parse(r.data);
+    if (r.kind === 's') ss.push([r.id, d.n, d.t]);
+    else if (r.kind === 'c') out.c.push([r.id, d.i, d.n]);
+    else if (r.kind === 'x') out.x.push({ id: r.id, t: d.t, n: d.n, d: d.d, ts: d.ts });
+  }
+  ss.sort((a, b) => a[2] - b[2]);
+  out.s = ss;
+  out.x.sort((a, b) => a.ts - b.ts);
+  if (ph) out.cfg.lk = 1;
+  return { out, ph, ak: row.akey };
+}
+
+async function allowed(request, slug, ph, ak) {
+  if (!ph) return true;
+  const pass = request.headers.get('x-pass') || '';
+  if (pass && (await lockId(slug, pass)) === ph) return true;
+  const key = request.headers.get('x-key') || '';
+  return !!(key && ak && (await sha(key)) === ak);
 }
 
 async function read(ctx, slug) {
@@ -154,30 +194,17 @@ async function read(ctx, slug) {
   const cache = caches.default;
   const ck = cacheKey(request, slug);
   const hit = await cache.match(ck);
-  if (hit) return new Response(hit.body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
-
-  const [l, e] = await env.DB.batch([
-    env.DB.prepare('SELECT data FROM lists WHERE slug=?').bind(slug),
-    env.DB.prepare('SELECT kind,id,data FROM entries WHERE slug=?').bind(slug),
-  ]);
-  const row = l.results[0];
-  if (!row) return json({ error: 'not found' }, 404);
-  const out = { cfg: JSON.parse(row.data), s: [], c: [], x: [] };
-  const ss = [];
-  for (const r of e.results) {
-    const d = JSON.parse(r.data);
-    if (r.kind === 's') ss.push([r.id, d.n, d.t]);
-    else if (r.kind === 'c') out.c.push([r.id, d.i, d.n]);
-    else out.x.push({ id: r.id, t: d.t, n: d.n, d: d.d, ts: d.ts });
+  let c;
+  if (hit) c = await hit.json();
+  else {
+    c = await load(env, slug);
+    if (!c) return json({ error: 'not found' }, 404);
+    ctx.waitUntil(cache.put(ck, new Response(JSON.stringify(c), {
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, s-maxage=${TTL}` },
+    })));
   }
-  ss.sort((a, b) => a[2] - b[2]);
-  out.s = ss;
-  out.x.sort((a, b) => a.ts - b.ts);
-  const res = new Response(JSON.stringify(out), {
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': `public, s-maxage=${TTL}` },
-  });
-  ctx.waitUntil(cache.put(ck, res.clone()));
-  return new Response(res.body, { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+  if (!(await allowed(request, slug, c.ph, c.ak))) return json({ error: 'Passcode needed', locked: 1 }, 401);
+  return json(c.out);
 }
 
 const bust = (ctx, slug) => ctx.waitUntil(caches.default.delete(cacheKey(ctx.request, slug)));
@@ -188,9 +215,15 @@ async function save(ctx, slug) {
   const b = await body(request);
   const cfg = cleanCfg(b.cfg);
   if (!cfg) return json({ error: 'Title needed' }, 400);
+  const pw = typeof b.pw === 'string' ? b.pw.trim() : '';
+  if (pw && !PW.test(pw)) return json({ error: 'Passcode must be 3 to 40 characters' }, 400);
   const r = await env.DB.prepare('UPDATE lists SET data=? WHERE slug=? AND akey=?')
     .bind(JSON.stringify(cfg), slug, await sha(key || '-')).run();
   if (!r.meta.changes) return json({ error: 'Not allowed' }, 403);
+  if (pw || b.rmpw) {
+    await env.DB.prepare("DELETE FROM entries WHERE slug=? AND kind='p'").bind(slug).run();
+    if (pw) await env.DB.prepare("INSERT OR REPLACE INTO entries(slug,kind,id,data) VALUES(?,'p',?,'{}')").bind(slug, await lockId(slug, pw)).run();
+  }
   bust(ctx, slug);
   return json({ ok: 1 });
 }
@@ -203,6 +236,14 @@ async function drop(ctx, slug) {
   await env.DB.prepare('DELETE FROM entries WHERE slug=?').bind(slug).run();
   bust(ctx, slug);
   return json({ ok: 1 });
+}
+
+async function gate({ request, env }, slug) {
+  const r = await env.DB.prepare(
+    "SELECT (SELECT id FROM entries WHERE slug=?1 AND kind='p') AS p, (SELECT akey FROM lists WHERE slug=?1) AS a"
+  ).bind(slug).first();
+  if (!r || !r.p) return null;
+  return (await allowed(request, slug, r.p, r.a)) ? null : json({ error: 'Passcode needed', locked: 1 }, 401);
 }
 
 async function put(env, slug, kind, id, data, tok) {
@@ -220,6 +261,8 @@ async function put(env, slug, kind, id, data, tok) {
 
 async function add(ctx, slug, kind) {
   const { request, env } = ctx;
+  const g = await gate(ctx, slug);
+  if (g) return g;
   const b = await body(request, 4000);
   const tok = str(b.tok, 40);
   const name = str(b.name, 40), nk = norm(name);
@@ -265,6 +308,8 @@ async function add(ctx, slug, kind) {
 
 async function del(ctx, slug, kind, id) {
   const { request, env } = ctx;
+  const g = await gate(ctx, slug);
+  if (g) return g;
   const tok = request.headers.get('x-tok') || '';
   const key = request.headers.get('x-key') || '';
   const r = await env.DB.prepare(
@@ -281,6 +326,8 @@ async function del(ctx, slug, kind, id) {
 
 async function upd(ctx, slug, id) {
   const { request, env } = ctx;
+  const g = await gate(ctx, slug);
+  if (g) return g;
   const b = await body(request, 4000);
   const t = str(b.t, 200);
   if (!t) return json({ error: 'Item needed' }, 400);

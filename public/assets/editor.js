@@ -3,6 +3,8 @@ P.Editor = function (root, opts) {
   const S = JSON.parse(JSON.stringify(opts.cfg || { title: '', note: '', date: '', a: '#16a34a', ps: 'ruled', pc: '', qs: [], items: [], roster: [] }));
   S.items.forEach((it) => { it.d = it.d || 0; });
   let slug = '';
+  let pw = '';
+  let rmpw = false;
   let focus = -1;
   const open = new Set();
   const COLORS = ['#16a34a', '#2563eb', '#e11d48', '#ea580c', '#7c3aed', '#0891b2', '#ca8a04', '#111827'];
@@ -218,7 +220,7 @@ P.Editor = function (root, opts) {
     const cfg = JSON.parse(JSON.stringify(S));
     cfg.items = cfg.items.filter((i) => i.t.trim());
     cfg.qs = cfg.qs.filter((q) => q.q.trim() && q.o.length >= 2);
-    try { await opts.onSubmit(cfg, slug); } catch (e) { toast(e.message); }
+    try { await opts.onSubmit(cfg, slug, { pw: pw.trim(), rmpw }); } catch (e) { toast(e.message); }
     submit.disabled = false;
   } }, opts.label);
 
@@ -238,6 +240,10 @@ P.Editor = function (root, opts) {
       h('input', { type: 'text', placeholder: 'goa-trip, or leave blank for 3 random words', maxLength: 40, oninput: (e) => { e.target.value = slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'); } }),
       h('div', { class: 'hint' }, 'Short and easy to type works best.'),
     ] : null,
+    h('label', { class: 'f' }, 'Passcode (optional)'),
+    h('input', { type: 'text', autocomplete: 'off', maxLength: 40, placeholder: S.lk ? 'Type a new passcode to change it' : 'Leave empty for an open list', oninput: (e) => { pw = e.target.value; } }),
+    S.lk ? h('button', { class: 'link', onclick: (e) => { rmpw = !rmpw; e.target.textContent = rmpw ? 'Passcode will be removed. Undo' : 'Remove passcode'; } }, 'Remove passcode') : null,
+    h('div', { class: 'hint' }, 'With a passcode, only people who know it can open the list. Share it separately from the link.'),
     h('div', { class: 'sec' }, 'Questions'),
     h('div', { class: 'hint', style: 'margin:-4px 0 12px' }, 'Optional. Answers decide which items each person sees.'),
     qsBox,

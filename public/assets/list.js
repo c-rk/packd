@@ -7,13 +7,15 @@
   const KEY = ls.get('packd:k:' + slug, '');
   const L = Object.assign({ tok: rid(16), ans: {}, ticks: {}, my: [], claims: {}, xmine: {} }, ls.get('packd:' + slug, {}));
   const persist = () => ls.set('packd:' + slug, L);
-  const hdr = () => ({ 'x-tok': L.tok, ...(KEY ? { 'x-key': KEY } : {}) });
+  let PW = ls.get('packd:pw:' + slug, '');
+  const hdr = () => ({ 'x-tok': L.tok, ...(KEY ? { 'x-key': KEY } : {}), ...(PW ? { 'x-pass': PW } : {}) });
   const url = `${location.origin}/${slug}`;
   let D, cfg, view = 'front', claimsBy = {}, dyn = null, lastFetch = 0;
 
   async function fetchData() {
-    const r = await fetch('/api/l/' + slug);
+    const r = await fetch('/api/l/' + slug, { headers: hdr() });
     if (r.status === 404) return false;
+    if (r.status === 401) throw Object.assign(new Error('locked'), { locked: true });
     if (!r.ok) throw new Error('load');
     D = await r.json();
     cfg = D.cfg;
@@ -190,8 +192,10 @@
     P.Editor(box, {
       cfg,
       label: 'Save changes',
-      async onSubmit(c) {
-        await api('PUT', '/l/' + slug, { cfg: c }, { 'x-key': KEY });
+      async onSubmit(c, _slug, extra) {
+        await api('PUT', '/l/' + slug, { cfg: c, pw: extra.pw, rmpw: extra.rmpw }, { 'x-key': KEY });
+        if (extra.pw) { PW = extra.pw; ls.set('packd:pw:' + slug, PW); }
+        if (extra.pw || extra.rmpw) c.lk = extra.pw ? 1 : 0;
         D.cfg = cfg = c;
         accent(c.a);
         P.paper(c);
@@ -289,7 +293,7 @@
       }
       signBtn.disabled = true;
       try {
-        const r = await api('POST', `/l/${slug}/e/s`, { name: L.name, tok: L.tok });
+        const r = await api('POST', `/l/${slug}/e/s`, { name: L.name, tok: L.tok }, hdr());
         L.sid = r.id;
         persist();
         if (!D.s.some((s) => s[0] === r.id)) D.s.push([r.id, L.name, Date.now()]);
@@ -393,7 +397,7 @@
 
   async function claim(it) {
     try {
-      const r = await api('POST', `/l/${slug}/e/c`, { item: it.id, name: L.name, tok: L.tok });
+      const r = await api('POST', `/l/${slug}/e/c`, { item: it.id, name: L.name, tok: L.tok }, hdr());
       L.claims[it.id] = r.id;
       persist();
       (claimsBy[it.id] = claimsBy[it.id] || []).push([r.id, it.id, L.name]);
@@ -441,7 +445,7 @@
 
     async function createServer(t) {
       const d = +mode;
-      const r = await api('POST', `/l/${slug}/e/x`, { t, d, name: L.name, tok: L.tok });
+      const r = await api('POST', `/l/${slug}/e/x`, { t, d, name: L.name, tok: L.tok }, hdr());
       D.x.push({ id: r.id, t, n: L.name, d, ts: Date.now() });
       L.xmine[r.id] = 1;
     }
@@ -486,9 +490,37 @@
     input.focus();
   }
 
+  function lockScreen(wrong) {
+    view = 'lock';
+    document.title = 'Locked · packd';
+    const input = h('input', { type: 'password', autocomplete: 'off', placeholder: 'Passcode', maxLength: 40 });
+    const go = async () => {
+      if (!input.value) return input.focus();
+      PW = input.value;
+      try {
+        if (!(await fetchData())) return notFound();
+        ls.set('packd:pw:' + slug, PW);
+        front();
+      } catch (e) {
+        if (e.locked) { PW = ''; toast('Wrong passcode'); input.select(); }
+        else toast('Could not load. Check your connection.');
+      }
+    };
+    input.onkeydown = (e) => e.key === 'Enter' && go();
+    P.fill(root,
+      h('div', { class: 'eyebrow' }, 'packd'),
+      h('h1', null, 'This list is locked'),
+      h('p', { class: 'mut' }, 'Ask whoever shared it for the passcode.'),
+      input,
+      h('button', { class: 'btn pri block', style: 'margin-top:14px', onclick: go }, 'Unlock'),
+      wrong ? null : footer(),
+    );
+    input.focus();
+  }
+
   async function refresh() {
     if (document.hidden || Date.now() - lastFetch < 20000) return;
-    try { await fetchData(); } catch { return; }
+    try { await fetchData(); } catch (e) { if (e.locked) lockScreen(); return; }
     if (view === 'front') paintFront();
   }
   setInterval(() => view === 'front' && refresh(), 30000);
@@ -497,7 +529,8 @@
   P.fill(root, h('div', { class: 'mut' }, 'Loading'));
   try {
     if (!(await fetchData())) return notFound();
-  } catch {
+  } catch (e) {
+    if (e.locked) return lockScreen(true);
     P.fill(root, h('p', null, 'Could not load. Check your connection.'), h('button', { class: 'btn', onclick: () => location.reload() }, 'Retry'));
     return;
   }

@@ -8,15 +8,16 @@
     cfg: tpl,
     isNew: true,
     label: 'Create list',
-    async onSubmit(cfg, slug) {
-      const r = await api('POST', '/lists', { cfg, slug });
+    async onSubmit(cfg, slug, extra) {
+      const r = await api('POST', '/lists', { cfg, slug, pw: extra.pw });
       ls.set('packd:k:' + r.slug, r.key);
       remember(r.slug, cfg.title, true);
-      done(r.slug, r.key, cfg.title);
+      if (extra.pw) ls.set('packd:pw:' + r.slug, extra.pw);
+      done(r.slug, r.key, cfg.title, extra.pw);
     },
   });
 
-  function done(slug, key, title) {
+  function done(slug, key, title, pw) {
     const pub = `${location.origin}/${slug}`;
     const adm = `${pub}#k=${key}`;
     const box = (label, url, note) => h('div', { class: 'card', style: 'margin-bottom:12px' },
@@ -28,6 +29,7 @@
     P.fill($('#app'), 
       h('div', { class: 'eyebrow' }, 'Ready'),
       h('h1', null, title),
+      pw ? h('p', { class: 'mut' }, 'Locked with passcode: ' + pw + '. Share it separately from the link.') : null,
       box('Share this with the group', pub, 'Everyone who opens it sees their own checklist.'),
       box('Your admin link', adm, 'Only you should have this. Save it now, it cannot be recovered. It also opens on this device automatically.'),
       h('button', { class: 'btn pri block', style: 'margin-bottom:10px', onclick: () => share(pub, title) }, 'Share with the group'),
