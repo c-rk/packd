@@ -14,6 +14,12 @@ const json = (o, status = 200) =>
 
 const str = (v, max) =>
   String(v ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
+const para = (v, max) =>
+  String(v ?? '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ')
+    .split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim()).join('\n')
+    .replace(/\n{3,}/g, '\n\n').trim().slice(0, max);
 const norm = (v) =>
   String(v ?? '').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 40);
 const int = (v, lo, hi, d) => {
@@ -36,7 +42,7 @@ function cleanCfg(c) {
   if (!title) return null;
   const out = {
     title,
-    note: str(c.note, 600),
+    note: para(c.note, 600),
     date: /^\d{4}-\d{2}-\d{2}$/.test(c.date) ? c.date : '',
     a: /^#[0-9a-f]{6}$/i.test(c.a) ? c.a.toLowerCase() : '#16a34a',
     ps: ['ruled', 'dots', 'grid', 'plain'].includes(c.ps) ? c.ps : 'ruled',

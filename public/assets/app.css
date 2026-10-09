@@ -96,3 +96,4 @@ html[data-paper=ruled] .wrap::before{display:block}
 html[data-paper=ruled] body{background-image:linear-gradient(transparent 35px,var(--rule) 35px);background-size:100% 36px}
 html[data-paper=dots] body{background-image:radial-gradient(var(--rule) 1.4px,transparent 1.9px);background-size:24px 24px}
 html[data-paper=grid] body{background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);background-size:24px 24px}
+.note p{margin:0 0 .6em;overflow-wrap:anywhere}

@@ -102,7 +102,7 @@
       h('div', { class: 'fade' },
         h('div', { class: 'eyebrow' }, [when, fmt].filter(Boolean).join(' · ') || 'Packing list'),
         h('h1', null, cfg.title),
-        cfg.note ? h('p', { class: 'mut', style: 'margin:0;overflow-wrap:anywhere' }, P.link(cfg.note)) : null,
+        cfg.note ? h('div', { class: 'mut note' }, cfg.note.split('\n').filter((l) => l.trim()).map((l) => h('p', null, P.link(l)))) : null,
         dyn,
         h('div', { style: 'margin-top:26px;display:flex;gap:10px' },
           h('button', { class: 'btn', style: 'flex:1', onclick: () => share(url, cfg.title) }, 'Share'),
