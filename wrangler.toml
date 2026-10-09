@@ -5,4 +5,4 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "packd"
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "710958a2-773d-4c9f-b0b9-e2ac82a6e861"
