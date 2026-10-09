@@ -36,7 +36,7 @@ function cleanCfg(c) {
   if (!title) return null;
   const out = {
     title,
-    note: str(c.note, 300),
+    note: str(c.note, 600),
     date: /^\d{4}-\d{2}-\d{2}$/.test(c.date) ? c.date : '',
     a: /^#[0-9a-f]{6}$/i.test(c.a) ? c.a.toLowerCase() : '#16a34a',
     ps: ['ruled', 'dots', 'grid', 'plain'].includes(c.ps) ? c.ps : 'ruled',
@@ -58,7 +58,7 @@ function cleanCfg(c) {
   }
   let prev = -1;
   for (const it of (Array.isArray(c.items) ? c.items : []).slice(0, 300)) {
-    const t = str(it?.t, 80);
+    const t = str(it?.t, 200);
     if (!t) continue;
     const item = {
       id: iid(it.id), t,
@@ -224,7 +224,7 @@ async function add(ctx, slug, kind) {
     id = nk;
     res = await put(env, slug, 's', id, { n: name, t: Date.now(), k: tok }, tok);
   } else if (kind === 'x') {
-    const t = str(b.t, 80);
+    const t = str(b.t, 200);
     if (!t) return json({ error: 'Item needed' }, 400);
     id = 'x' + rand(7);
     res = await put(env, slug, 'x', id, { t, n: name, d: int(b.d, 0, 9, 0), k: tok, ts: Date.now() }, tok);
@@ -276,7 +276,7 @@ async function del(ctx, slug, kind, id) {
 async function upd(ctx, slug, id) {
   const { request, env } = ctx;
   const b = await body(request, 4000);
-  const t = str(b.t, 80);
+  const t = str(b.t, 200);
   if (!t) return json({ error: 'Item needed' }, 400);
   const tok = request.headers.get('x-tok') || '';
   const key = request.headers.get('x-key') || '';

@@ -90,6 +90,7 @@ label.f{display:block;font:700 1.3rem var(--hand);margin:18px 0 4px}
 .foot{margin-top:50px;text-align:center;font-size:.85rem}
 .foot a{color:var(--mut)}
 .fade{animation:f .25s}
+.lnk{color:var(--a);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere;position:relative;z-index:1}
 @media(prefers-reduced-motion:reduce){.row.done .strike,.row.done .bx .ck{transition-duration:.01s}}
 html[data-paper=ruled] .wrap::before{display:block}
 html[data-paper=ruled] body{background-image:linear-gradient(transparent 35px,var(--rule) 35px);background-size:100% 36px}

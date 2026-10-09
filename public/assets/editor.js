@@ -109,7 +109,7 @@ P.Editor = function (root, opts) {
     return h('div', { class: 'item', style: `margin-left:${it.d * 22}px` },
       h('div', { class: 'r1' },
         h('input', {
-          type: 'text', value: it.t, placeholder: it.d ? 'Item' : 'Item or group', maxLength: 80, id: 'it' + i,
+          type: 'text', value: it.t, placeholder: it.d ? 'Item' : 'Item or group', maxLength: 200, id: 'it' + i,
           oninput: (e) => (it.t = e.target.value),
           onkeydown: (e) => {
             if (e.key === 'Tab') {
@@ -183,7 +183,7 @@ P.Editor = function (root, opts) {
       else if (hdr && !d) d = 1;
       if (!line) continue;
       d = Math.min(d, prev + 1, 2);
-      S.items.push({ id: rid(6), t: line.slice(0, 80), d, q: 1, n: 0 });
+      S.items.push({ id: rid(6), t: line.slice(0, 200), d, q: 1, n: 0 });
       prev = d;
     }
     ta.value = '';
@@ -228,7 +228,7 @@ P.Editor = function (root, opts) {
     h('label', { class: 'f' }, 'Date (optional)'),
     h('input', { type: 'date', value: S.date, oninput: (e) => (S.date = e.target.value) }),
     h('label', { class: 'f' }, 'Note for everyone (optional)'),
-    h('textarea', { maxLength: 300, value: S.note, placeholder: 'Meet at 6am at the station', oninput: (e) => (S.note = e.target.value) }),
+    h('textarea', { maxLength: 600, value: S.note, placeholder: 'Meet at 6am at the station', oninput: (e) => (S.note = e.target.value) }),
     h('label', { class: 'f' }, 'Accent colour'),
     swatches,
     h('label', { class: 'f' }, 'Paper'),

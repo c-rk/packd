@@ -102,7 +102,7 @@
       h('div', { class: 'fade' },
         h('div', { class: 'eyebrow' }, [when, fmt].filter(Boolean).join(' · ') || 'Packing list'),
         h('h1', null, cfg.title),
-        cfg.note ? h('p', { class: 'mut', style: 'margin:0' }, cfg.note) : null,
+        cfg.note ? h('p', { class: 'mut', style: 'margin:0;overflow-wrap:anywhere' }, P.link(cfg.note)) : null,
         dyn,
         h('div', { style: 'margin-top:26px;display:flex;gap:10px' },
           h('button', { class: 'btn', style: 'flex:1', onclick: () => share(url, cfg.title) }, 'Share'),
@@ -322,7 +322,7 @@
       if (tickable && L.ticks[it.id]) { rec.done = true; el.classList.add('done'); }
       if (tickable) {
         el.addEventListener('click', (e) => {
-          if (e.target.closest('button')) return;
+          if (e.target.closest('button, a')) return;
           if (L.ticks[it.id]) delete L.ticks[it.id]; else L.ticks[it.id] = 1;
           persist();
           sync();
@@ -338,7 +338,7 @@
       if (s === 'open') bx.style.opacity = '.4';
       el.append(
         bx,
-        h('div', { class: 't' }, h('span', { class: 'w' }, it.t, st), it.q > 1 ? h('span', { class: 'q' }, '×' + it.q) : null, sub ? h('span', { class: 's' }, sub) : null),
+        h('div', { class: 't' }, h('span', { class: 'w' }, P.link(it.t), st), it.q > 1 ? h('span', { class: 'q' }, '×' + it.q) : null, sub ? h('span', { class: 's' }, sub) : null),
         ...side,
       );
       recs.push(rec);
@@ -357,10 +357,10 @@
         wrap.classList.contains('shut') ? collapsed.add(it.id) : collapsed.delete(it.id);
         ls.set('packd:c:' + slug, [...collapsed]);
       } }, '▾');
-      el.append(bx, h('div', { class: 't' }, h('span', { class: 'w' }, it.t, h('i', { class: 'strike' }))), cnt, chev);
+      el.append(bx, h('div', { class: 't' }, h('span', { class: 'w' }, P.link(it.t), h('i', { class: 'strike' }))), cnt, chev);
       if (tickable) {
         el.addEventListener('click', (e) => {
-          if (e.target.closest('button')) return;
+          if (e.target.closest('button, a')) return;
           const lv = leavesOf(node).filter(isNeeded);
           const all = lv.every((n) => L.ticks[n.it.id]);
           for (const n of lv) { if (all) delete L.ticks[n.it.id]; else L.ticks[n.it.id] = 1; }
@@ -424,7 +424,7 @@
 
   function addSheet(edit) {
     let mode = edit ? (edit.local ? 'me' : String(edit.n)) : 'me';
-    const input = h('input', { type: 'text', placeholder: 'What else should be packed?', maxLength: 80, value: edit ? edit.t : '' });
+    const input = h('input', { type: 'text', placeholder: 'What else should be packed?', maxLength: 200, value: edit ? edit.t : '' });
     const modes = [
       ['me', 'Just me', 'Only on your own list.'],
       ['0', 'Everyone', 'Added to every list.'],

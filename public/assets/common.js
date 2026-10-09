@@ -124,5 +124,21 @@ window.P = (() => {
     return t.content.firstChild;
   }
 
-  return { paper, box, fill, $, h, ls, api, norm, rid, toast, copy, share, accent, daysTo, ago, remember };
+  const URL_RE = /(?:https?:\/\/|(?<![@\w.-])www\.)[^\s<]+|(?<![@\w.\/-])(?:[a-z0-9-]+\.)+(?:com|org|net|in|io|co|app|dev|me|gl|ly|info|xyz|page|link)(?![a-z0-9.-])(?:\/[^\s<]*)?/gi;
+
+  function link(text) {
+    const out = [];
+    let last = 0;
+    String(text).replace(URL_RE, (m, i) => {
+      const clean = m.replace(/[.,;:!?)\]'"]+$/, '');
+      if (i > last) out.push(text.slice(last, i));
+      out.push(h('a', { class: 'lnk', href: /^https?:/i.test(clean) ? clean : 'https://' + clean, target: '_blank', rel: 'noopener noreferrer' }, clean));
+      last = i + clean.length;
+      return m;
+    });
+    if (last < text.length) out.push(text.slice(last));
+    return out;
+  }
+
+  return { link, paper, box, fill, $, h, ls, api, norm, rid, toast, copy, share, accent, daysTo, ago, remember };
 })();
