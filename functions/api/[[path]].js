@@ -119,6 +119,7 @@ export async function onRequest(ctx) {
         if (p.length === 4 && m === 'POST') return await add(ctx, slug, p[3]);
         if (p.length === 5 && m === 'DELETE') return await del(ctx, slug, p[3], p[4]);
         if (p.length === 5 && m === 'PUT' && p[3] === 'x') return await upd(ctx, slug, p[4]);
+        if (p.length === 5 && m === 'PUT' && p[3] === 's') return await prog(ctx, slug, p[4]);
       }
     }
     return json({ error: 'not found' }, 404);
@@ -170,7 +171,7 @@ async function load(env, slug) {
   for (const r of e.results) {
     if (r.kind === 'p') { ph = r.id; continue; }
     const d = JSON.parse(r.data);
-    if (r.kind === 's') ss.push([r.id, d.n, d.t]);
+    if (r.kind === 's') ss.push([r.id, d.n, d.t, d.p ? d.p[0] : null, d.p ? d.p[1] : null]);
     else if (r.kind === 'c') out.c.push([r.id, d.i, d.n]);
     else if (r.kind === 'x') out.x.push({ id: r.id, t: d.t, n: d.n, d: d.d, ts: d.ts });
   }
@@ -271,7 +272,8 @@ async function add(ctx, slug, kind) {
 
   if (kind === 's') {
     id = nk;
-    res = await put(env, slug, 's', id, { n: name, t: Date.now(), k: tok }, tok);
+    const total = int(b.total, 0, 999, 0);
+    res = await put(env, slug, 's', id, { n: name, t: Date.now(), k: tok, p: [Math.min(int(b.done, 0, 999, 0), total), total] }, tok);
   } else if (kind === 'x') {
     const t = str(b.t, 200);
     if (!t) return json({ error: 'Item needed' }, 400);
@@ -337,6 +339,22 @@ async function upd(ctx, slug, id) {
     `UPDATE entries SET data=json_set(data,'$.t',?4,'$.d',?5) WHERE slug=?1 AND kind='x' AND id=?2
      AND (json_extract(data,'$.k')=?3 OR EXISTS(SELECT 1 FROM lists WHERE slug=?1 AND akey=?6))`
   ).bind(slug, id, tok.length >= 8 ? tok : '-', t, int(b.d, 0, 9, 0), key ? await sha(key) : '-').run();
+  if (!r.meta.changes) return json({ error: 'Not allowed' }, 403);
+  bust(ctx, slug);
+  return json({ ok: 1 });
+}
+
+async function prog(ctx, slug, id) {
+  const { request, env } = ctx;
+  const g = await gate(ctx, slug);
+  if (g) return g;
+  const b = await body(request, 1000);
+  const total = int(b.total, 0, 999, 0);
+  const done = Math.min(int(b.done, 0, 999, 0), total);
+  const tok = request.headers.get('x-tok') || '';
+  const r = await env.DB.prepare(
+    "UPDATE entries SET data=json_set(data,'$.p',json(?4)) WHERE slug=?1 AND kind='s' AND id=?2 AND json_extract(data,'$.k')=?3"
+  ).bind(slug, id, tok.length >= 8 ? tok : '-', JSON.stringify([done, total])).run();
   if (!r.meta.changes) return json({ error: 'Not allowed' }, 403);
   bust(ctx, slug);
   return json({ ok: 1 });

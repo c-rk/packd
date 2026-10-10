@@ -145,9 +145,9 @@
       n
         ? h('ul', { class: 'names' }, D.s.map((s) =>
             h('li', null,
-              h('span', { class: 'tick' }, '✓'),
+              h('span', { class: 'tick' + (s[4] && s[3] < s[4] ? ' part' : '') }, s[4] && s[3] < s[4] ? '' : '✓'),
               h('span', { class: 'n' }, s[1]),
-              h('span', { class: 'mut small' }, ago(s[2])),
+              s[4] ? h('span', { class: 'prog' }, `${s[3]}/${s[4]}`) : h('span', { class: 'mut small' }, ago(s[2])),
               KEY ? h('button', { class: 'x', title: 'Remove sign off', onclick: () => removeSign(s[0]) }, '✕') : null,
             )))
         : h('p', { class: 'mut', style: 'margin:0' }, 'Nobody yet. Be the first.'),
@@ -211,8 +211,11 @@
     const st = { name: L.name || '', ans: { ...L.ans } };
     const nameIn = h('input', { type: 'text', value: st.name, placeholder: 'Your name', maxLength: 40, oninput: (e) => { st.name = e.target.value; paintNames(); } });
     const names = h('div', { class: 'chips', style: 'margin-bottom:12px' });
+    const takenBy = (n) => D.s.some((s) => s[0] === norm(n)) && L.sid !== norm(n);
     const paintNames = () => P.fill(names, ...cfg.roster.map((r) =>
-      h('button', { class: 'chip' + (norm(st.name) === norm(r) ? ' on' : ''), onclick: () => { st.name = r; nameIn.value = r; paintNames(); } }, r)));
+      takenBy(r)
+        ? h('span', { class: 'chip ghost', title: 'Already signed off' }, r)
+        : h('button', { class: 'chip' + (norm(st.name) === norm(r) ? ' on' : ''), onclick: () => { st.name = r; nameIn.value = r; paintNames(); } }, r)));
     const qBlocks = cfg.qs.map((q) => {
       const box = h('div', { class: 'chips' });
       const paint = () => P.fill(box, ...q.o.map((o) =>
@@ -223,6 +226,7 @@
     const go = h('button', { class: 'btn pri block', style: 'margin-top:30px', onclick: () => {
       const name = st.name.trim();
       if (!norm(name)) return toast('Tell us your name');
+      if (takenBy(name)) return toast('Someone already signed off with that name. Add an initial or ask the organiser.');
       if (cfg.qs.some((q) => !st.ans[q.id])) return toast('Answer all the questions');
       L.name = name.replace(/\s+/g, ' ').slice(0, 40);
       L.ans = st.ans;
@@ -241,6 +245,41 @@
     paintNames();
     window.scrollTo(0, 0);
   }
+
+  function ask(title, text, okLabel, noLabel) {
+    return new Promise((resolve) => {
+      const end = (v) => { sheet.remove(); resolve(v); };
+      const sheet = h('div', { class: 'sheet', onclick: (e) => e.target === sheet && end(false) },
+        h('div', null,
+          h('h2', null, title),
+          h('p', { class: 'mut', style: 'margin:0 0 18px' }, text),
+          h('div', { style: 'display:grid;gap:10px' },
+            h('button', { class: 'btn pri', onclick: () => end(true) }, okLabel),
+            h('button', { class: 'btn', onclick: () => end(false) }, noLabel))));
+      document.body.append(sheet);
+    });
+  }
+
+  let progTimer = null, progNow = null;
+  function track(done, total) {
+    const e = D.s.find((s) => s[0] === L.sid);
+    if (!e) return;
+    if (e[3] === done && e[4] === total) return;
+    e[3] = done;
+    e[4] = total;
+    progNow = { done, total };
+    clearTimeout(progTimer);
+    progTimer = setTimeout(flush, 5000);
+  }
+  function flush() {
+    clearTimeout(progTimer);
+    if (!progNow || !L.sid) return;
+    const body = JSON.stringify(progNow);
+    progNow = null;
+    fetch(`/api/l/${slug}/e/s/${encodeURIComponent(L.sid)}`, { method: 'PUT', keepalive: true, headers: { 'content-type': 'application/json', ...hdr() }, body }).catch(() => {});
+  }
+  window.addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => document.hidden && flush());
 
   const collapsed = new Set(ls.get('packd:c:' + slug, []));
 
@@ -278,8 +317,8 @@
       count.textContent = `${done}/${list.length}`;
       const left = list.length - done;
       const me = signedMe();
-      signBtn.disabled = !me && left > 0;
-      signBtn.textContent = me ? 'Signed off. Tap to undo' : left > 0 ? `${left} left to pack` : `Sign off as ${L.name}`;
+      signBtn.textContent = me ? 'Signed off. Tap to undo' : left > 0 ? `Sign off (${left} left)` : `Sign off as ${L.name}`;
+      if (me) track(done, list.length);
     }
 
     signBtn.onclick = async () => {
@@ -291,15 +330,20 @@
         toast('Sign off removed');
         return sync();
       }
+      const list = roots.flatMap(leavesOf).filter(isNeeded);
+      const done = list.filter((n) => L.ticks[n.it.id]).length;
+      if (done < list.length && !(await ask(`You have ${list.length - done} of ${list.length} items still unticked.`, 'You can sign off now and come back to tick more later.', 'Sign off', 'Keep packing'))) return;
       signBtn.disabled = true;
       try {
-        const r = await api('POST', `/l/${slug}/e/s`, { name: L.name, tok: L.tok }, hdr());
+        const r = await api('POST', `/l/${slug}/e/s`, { name: L.name, tok: L.tok, done, total: list.length }, hdr());
         L.sid = r.id;
         persist();
-        if (!D.s.some((s) => s[0] === r.id)) D.s.push([r.id, L.name, Date.now()]);
+        D.s = D.s.filter((s) => s[0] !== r.id);
+        D.s.push([r.id, L.name, Date.now(), done, list.length]);
         toast('Signed off. Have a great trip!');
         front();
       } catch (e) {
+        signBtn.disabled = false;
         sync();
         toast(e.status === 409 && e.data.error === 'taken' ? 'That name already signed off on another device. Add an initial.' : e.message);
       }

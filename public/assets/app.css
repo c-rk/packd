@@ -97,3 +97,5 @@ html[data-paper=ruled] body{background-image:linear-gradient(transparent 35px,va
 html[data-paper=dots] body{background-image:radial-gradient(var(--rule) 1.4px,transparent 1.9px);background-size:24px 24px}
 html[data-paper=grid] body{background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);background-size:24px 24px}
 .note p{margin:0 0 .6em;overflow-wrap:anywhere}
+.names .tick.part{border:2px dashed var(--a);border-radius:50%;width:24px;height:24px;margin:2px;font-size:0}
+.names .prog{font:700 1.3rem var(--hand);color:var(--mut)}
