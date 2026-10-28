@@ -5,6 +5,9 @@ const RESERVED = new Set(['api', 'new', 'l', 'assets', 'admin', 'index', 'favico
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const CAP = 500;
 const TTL = 10;
+// Owe Owl, the email expense splitter. A list can name the trip that splits its costs.
+const OWEOWL = 'owl.tentkotta.org';
+const OW = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const json = (o, status = 200) =>
   new Response(JSON.stringify(o), {
@@ -49,6 +52,8 @@ function cleanCfg(c) {
     pc: /^#[0-9a-f]{6}$/i.test(c.pc) ? c.pc.toLowerCase() : '',
     qs: [], items: [], roster: [],
   };
+  const ow = String(c.ow ?? '').trim().toLowerCase().replace(/@.*$/, '');
+  if (ow && ow.length <= 60 && OW.test(ow)) { out.ow = ow; out.owd = OWEOWL; }
   const ids = (set) => (v) => {
     let id = typeof v === 'string' && /^[a-z0-9]{1,12}$/.test(v) && !set.has(v) ? v : null;
     while (!id || set.has(id)) id = rand(6);

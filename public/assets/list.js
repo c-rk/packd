@@ -89,6 +89,19 @@
     return h('div', { class: 'foot mut' }, 'Made with ', h('a', { href: '/' }, 'packd'));
   }
 
+  function oweOwl() {
+    const addr = cfg.ow + '@' + (cfg.owd || 'owl.tentkotta.org');
+    return h('div', { class: 'card', style: 'margin:16px 0 4px' },
+      h('div', { class: 'sec', style: 'margin:0 0 6px' }, 'Shared costs'),
+      h('div', { class: 'mut', style: 'margin-bottom:10px' }, 'Paid for something on this trip? Email one line like "1680 dinner" to the trip and Owe Owl splits it.'),
+      h('a', { href: 'mailto:' + addr, style: 'font-weight:700;word-break:break-all' }, addr),
+      h('div', { style: 'margin-top:12px;display:flex;gap:10px' },
+        h('button', { class: 'btn sm', onclick: () => copy(addr) }, 'Copy address'),
+        h('a', { class: 'btn sm', style: 'text-decoration:none;display:inline-grid;place-items:center', href: 'mailto:' + addr + '?subject=link&body=link' }, 'Get my trip page'),
+      ),
+    );
+  }
+
   function front() {
     view = 'front';
     const dd = daysTo(cfg.date);
@@ -105,6 +118,7 @@
         h('div', { class: 'eyebrow' }, [when, fmt].filter(Boolean).join(' · ') || 'Packing list'),
         h('h1', null, cfg.title),
         cfg.note ? h('div', { class: 'mut note' }, cfg.note.split('\n').filter((l) => l.trim()).map((l) => h('p', null, P.link(l)))) : null,
+        cfg.ow ? oweOwl() : null,
         dyn,
         h('div', { style: 'margin-top:26px;display:flex;gap:10px' },
           h('button', { class: 'btn', style: 'flex:1', onclick: () => share(url, cfg.title) }, 'Share'),
